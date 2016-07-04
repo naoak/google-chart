@@ -1,7 +1,6 @@
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../iron-ajax/iron-request.html">
 <link rel="import" href="../promise-polyfill/promise-polyfill-lite.html">
-<link rel="import" href="charts-loader.html">
 
 <!--
 `google-chart` encapsulates Google Charts as a web component, allowing you to easily visualize
@@ -132,10 +131,12 @@ Data can be provided in one of three ways:
   var getChartPackage = function(opt_pkg) {
     var pkg = opt_pkg || DEFACTO_CHART_PACKAGE;
     if (pkgPromises[pkg]) return pkgPromises[pkg];
-    pkgPromises[pkg] = new Promise(function(resolve) {
-      google.charts.load('current', {packages: [pkg]});
-      google.charts.setOnLoadCallback(function() {
-        resolve(google.visualization);
+    pkgPromises[pkg] = libraryPromise.then(function() {
+      return new Promise(function(resolve) {
+        google.charts.load('current', {packages: [pkg]});
+        google.charts.setOnLoadCallback(function() {
+          resolve(google.visualization);
+        });
       });
     });
     return pkgPromises[pkg];
@@ -146,6 +147,15 @@ Data can be provided in one of three ways:
   var createChart = function(type, chartElement) {
     return CHART_CONSTRUCTORS[type](chartElement);
   };
+
+  var libraryPromise = new Promise(function(resolve, reject) {
+    var script = document.createElement('script');
+    script.src = 'https://www.gstatic.com/charts/loader.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    var s = document.querySelector('script') || document.body;
+    s.parentNode.insertBefore(script, s);
+  });
 
   // We can go ahead and load the defacto package because we'll need it to do
   // anything (e.g. creating the DataTable to render).
@@ -389,6 +399,10 @@ Data can be provided in one of three ways:
       return chart;
     },
 
+    _handleError: function() {
+      this.fire('google-chart-error');
+    },
+
     /**
      * Redraws the chart.
      *
@@ -409,7 +423,8 @@ Data can be provided in one of three ways:
             chart.draw(data, this.options || {});
             return chart;
           }.bind(this), function(error) {
-            this.$.chartdiv.innerHTML = error;
+            this._handleError(error);
+            this.$.chartdiv.innerHTML = '';
             throw error;
           }.bind(this));
       this._setSelection();
