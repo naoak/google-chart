@@ -148,6 +148,7 @@ Data can be provided in one of three ways:
     return CHART_CONSTRUCTORS[type](chartElement);
   };
 
+  // Promise for Google Charts library
   var libraryPromise = new Promise(function(resolve, reject) {
     var script = document.createElement('script');
     script.src = 'https://www.gstatic.com/charts/loader.js';
@@ -164,6 +165,14 @@ Data can be provided in one of three ways:
   Polymer({
 
     is: 'google-chart',
+
+    /**
+     * Fired when an error is ocurred on loading the chart library or drawing the chart.
+     *
+     * @event google-chart-error
+     * @param {object} detail
+     *   @param {object} detail.error The error.
+     */
 
     /**
      * Fired when a new chart type is created and rendered.
@@ -399,8 +408,10 @@ Data can be provided in one of three ways:
       return chart;
     },
 
-    _handleError: function() {
-      this.fire('google-chart-error');
+    _handleError: function(error) {
+      this.fire('google-chart-error', {
+        error: error
+      });
     },
 
     /**
@@ -423,8 +434,8 @@ Data can be provided in one of three ways:
             chart.draw(data, this.options || {});
             return chart;
           }.bind(this), function(error) {
+            this.$.chartdiv.innerHTML = error;
             this._handleError(error);
-            this.$.chartdiv.innerHTML = '';
             throw error;
           }.bind(this));
       this._setSelection();
